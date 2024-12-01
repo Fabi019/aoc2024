@@ -6,9 +6,6 @@ use criterion::{criterion_group, criterion_main};
 
 aoc2024::bench!(day01);
 
-criterion_group!(
-    benches,
-    day01::bench
-);
+criterion_group!(benches, day01::bench);
 
 criterion_main!(benches);

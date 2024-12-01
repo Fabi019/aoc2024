@@ -3,21 +3,17 @@ use std::collections::HashMap;
 aoc2024::main!("../../assets/day01.txt");
 
 fn part1(input: &str) -> u32 {
-    let both = input
-        .lines()
-        .map(|line| line.split_once("   ").unwrap())
-        .collect::<Vec<_>>();
+    let both = input.lines().map(|line| line.split_once("   ").unwrap());
 
-    let mut left = both
-        .iter()
-        .map(|e| e.0.parse::<u32>().unwrap())
-        .collect::<Vec<_>>();
+    let mut left = Vec::new();
+    let mut right = Vec::new();
+
+    for (l, r) in both {
+        left.push(l.parse::<u32>().unwrap());
+        right.push(r.parse::<u32>().unwrap());
+    }
+
     left.sort_unstable();
-
-    let mut right = both
-        .into_iter()
-        .map(|e| e.1.parse::<u32>().unwrap())
-        .collect::<Vec<_>>();
     right.sort_unstable();
 
     left.into_iter()
@@ -26,23 +22,15 @@ fn part1(input: &str) -> u32 {
 }
 
 fn part2(input: &str) -> u32 {
-    let both = input
-        .lines()
-        .map(|line| line.split_once("   ").unwrap())
-        .collect::<Vec<_>>();
+    let both = input.lines().map(|line| line.split_once("   ").unwrap());
 
-    let left = both
-        .iter()
-        .map(|e| e.0.parse::<u32>().unwrap())
-        .collect::<Vec<_>>();
+    let mut left = Vec::new();
+    let mut right = HashMap::new();
 
-    let right =
-        both.into_iter()
-            .map(|e| e.1.parse::<u32>().unwrap())
-            .fold(HashMap::new(), |mut acc, i| {
-                *acc.entry(i).or_insert(0) += 1;
-                acc
-            });
+    for (l, r) in both {
+        left.push(l.parse::<u32>().unwrap());
+        *right.entry(r.parse::<u32>().unwrap()).or_insert(0) += 1;
+    }
 
     left.into_iter()
         .fold(0, |acc, i| acc + i * right.get(&i).unwrap_or(&0))

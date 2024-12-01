@@ -73,11 +73,7 @@ macro_rules! bench {
 }
 
 pub fn gcd(a: u64, b: u64) -> u64 {
-    if b == 0 {
-        a
-    } else {
-        gcd(b, a % b)
-    }
+    if b == 0 { a } else { gcd(b, a % b) }
 }
 
 pub fn lcm(a: u64, b: u64) -> u64 {
