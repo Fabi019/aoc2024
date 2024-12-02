@@ -8,7 +8,7 @@ fn part1(input: &str) -> u32 {
                 .map(|i| i.parse::<u32>().unwrap())
                 .collect::<Vec<_>>()
         })
-        .filter(|r| is_save(r))
+        .filter(|r| is_safe(r, usize::MAX))
         .count() as u32
 }
 
@@ -21,17 +21,16 @@ fn part2(input: &str) -> u32 {
 
     let mut saves = 0;
 
-    'outer: for report in reports {
-        if is_save(&report) {
+    for report in reports {
+        if is_safe(&report, usize::MAX) {
             saves += 1;
             continue;
         }
 
         for i in 0..report.len() {
-            let new_report = [&report[0..i], &report[i + 1..report.len()]].concat();
-            if is_save(&new_report) {
+            if is_safe(&report, i) {
                 saves += 1;
-                continue 'outer;
+                break;
             }
         }
     }
@@ -39,26 +38,34 @@ fn part2(input: &str) -> u32 {
     saves
 }
 
-fn is_save(report: &[u32]) -> bool {
-    let mut inc = None;
-    let mut last = report.first().unwrap();
+fn is_safe(report: &[u32], skip: usize) -> bool {
+    let start = if skip == 0 { 1 } else { 0 };
 
-    for level in report.iter().skip(1) {
-        if let Some(inc) = inc {
-            if inc && last > level || !inc && last < level {
-                return false;
-            }
-        } else {
-            inc = Some(last < level);
+    let mut inc = false;
+    let mut last = report[start];
+    let mut index = start;
+
+    for &level in &report[start + 1..] {
+        index += 1;
+        if skip == index {
+            continue;
         }
 
-        let diff = last.abs_diff(*level);
-        if diff < 1 || diff > 3 {
+        let diff = last as i32 - level as i32;
+
+        if index == start + 1 {
+            inc = diff > 0
+        } else if inc && diff < 0 || !inc && diff > 0 {
+            return false;
+        }
+
+        if diff == 0 || diff.abs() > 3 {
             return false;
         }
 
         last = level;
     }
+
     true
 }
 
