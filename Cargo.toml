@@ -12,3 +12,4 @@ harness = false
 
 [dependencies]
 mimalloc = { version = "*", default-features = false }
+regex = "1.11.1"
