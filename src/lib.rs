@@ -55,6 +55,17 @@ macro_rules! test {
 }
 
 #[macro_export]
+macro_rules! benchs {
+    ($($day:ident),*) => {
+        $(
+            aoc2024::bench!($day);
+        )*
+
+        criterion_group!(benchmarks, $($day::bench,)*);
+    };
+}
+
+#[macro_export]
 macro_rules! bench {
     ($day:ident) => {
         mod $day {
