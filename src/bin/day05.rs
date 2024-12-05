@@ -1,4 +1,4 @@
-use std::cmp::Ordering;
+use std::{cmp::Ordering, collections::HashSet};
 
 aoc2024::main!("../../assets/day05.txt");
 
@@ -8,7 +8,7 @@ fn part1(input: &str) -> u32 {
     let rules = rules
         .lines()
         .map(|l| l.split_once("|").unwrap())
-        .collect::<Vec<_>>();
+        .collect::<HashSet<_>>();
 
     updates
         .lines()
@@ -21,26 +21,14 @@ fn part1(input: &str) -> u32 {
         })
 }
 
-fn is_correct(update: &[&str], rules: &[(&str, &str)]) -> bool {
-    for (index, i) in update.iter().enumerate() {
-        let rules = rules.iter().filter_map(|(a, b)| {
-            if a == i {
-                return Some((b, true));
-            } else if b == i {
-                return Some((a, false));
-            }
-            None
-        });
-
-        for (ab, lg) in rules {
-            if let Some(pos) = update.iter().position(|i| i == ab) {
-                if pos < index && lg || pos > index && !lg {
-                    return false;
-                }
+fn is_correct(update: &[&str], rules: &HashSet<(&str, &str)>) -> bool {
+    for (i, u) in update.iter().enumerate() {
+        for p in update.iter().take(i) {
+            if rules.contains(&(u, p)) {
+                return false;
             }
         }
     }
-
     true
 }
 
@@ -50,17 +38,17 @@ fn part2(input: &str) -> u32 {
     let rules = rules
         .lines()
         .map(|l| l.split_once("|").unwrap())
-        .collect::<Vec<_>>();
+        .collect::<HashSet<_>>();
 
     updates
         .lines()
         .map(|l| l.split(",").collect::<Vec<_>>())
         .fold(0, |acc, mut u| {
             if !is_correct(&u, &rules) {
-                u.sort_by(|first, second| {
-                    if rules.iter().any(|(a, b)| a == first && b == second) {
+                u.sort_unstable_by(|first, second| {
+                    if rules.contains(&(first, second)) {
                         return Ordering::Less;
-                    } else if rules.iter().any(|(a, b)| a == second && b == first) {
+                    } else if rules.contains(&(second, first)) {
                         return Ordering::Greater;
                     }
 
