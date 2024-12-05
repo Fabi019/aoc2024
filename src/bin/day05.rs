@@ -9,38 +9,39 @@ fn part1(input: &str) -> u32 {
         .lines()
         .map(|l| l.split_once("|").unwrap())
         .collect::<Vec<_>>();
-    let updates = updates
+
+    updates
         .lines()
         .map(|l| l.split(",").collect::<Vec<_>>())
-        .collect::<Vec<_>>();
+        .fold(0, |acc, u| {
+            if is_correct(&u, &rules) {
+                return acc + u[u.len() / 2].parse::<u32>().unwrap();
+            }
+            acc
+        })
+}
 
-    let mut sum = 0;
+fn is_correct(update: &[&str], rules: &[(&str, &str)]) -> bool {
+    for (index, i) in update.iter().enumerate() {
+        let rules = rules.iter().filter_map(|(a, b)| {
+            if a == i {
+                return Some((b, true));
+            } else if b == i {
+                return Some((a, false));
+            }
+            None
+        });
 
-    'next: for update in updates {
-        let mut previous = Vec::new();
-
-        for (index, i) in update.iter().enumerate() {
-            for (_, b) in rules.iter().filter(|(a, _)| a == i) {
-                if previous.contains(b) {
-                    continue 'next;
+        for (ab, lg) in rules {
+            if let Some(pos) = update.iter().position(|i| i == ab) {
+                if pos < index && lg || pos > index && !lg {
+                    return false;
                 }
             }
-
-            for (a, _) in rules.iter().filter(|(_, b)| b == i) {
-                if let Some(pos) = update.iter().position(|i| i == a) {
-                    if pos > index {
-                        continue 'next;
-                    }
-                }
-            }
-
-            previous.push(i);
         }
-
-        sum += previous[previous.len() / 2].parse::<u32>().unwrap();
     }
 
-    sum
+    true
 }
 
 fn part2(input: &str) -> u32 {
@@ -50,55 +51,26 @@ fn part2(input: &str) -> u32 {
         .lines()
         .map(|l| l.split_once("|").unwrap())
         .collect::<Vec<_>>();
-    let updates = updates
+
+    updates
         .lines()
         .map(|l| l.split(",").collect::<Vec<_>>())
-        .collect::<Vec<_>>();
-
-    let mut sum = 0;
-
-    for update in updates {
-        let mut new = update.clone();
-        let mut incorrect = false;
-
-        'next: for (index, i) in update.iter().enumerate() {
-            for (_, b) in rules.iter().filter(|(a, _)| a == i) {
-                if let Some(pos) = update.iter().position(|i| i == b) {
-                    if pos < index {
-                        incorrect = true;
-                        break 'next;
+        .fold(0, |acc, mut u| {
+            if !is_correct(&u, &rules) {
+                u.sort_by(|first, second| {
+                    if rules.iter().any(|(a, b)| a == first && b == second) {
+                        return Ordering::Less;
+                    } else if rules.iter().any(|(a, b)| a == second && b == first) {
+                        return Ordering::Greater;
                     }
-                }
+
+                    Ordering::Equal
+                });
+
+                return acc + u[u.len() / 2].parse::<u32>().unwrap();
             }
-
-            for (a, _) in rules.iter().filter(|(_, b)| b == i) {
-                if let Some(pos) = update.iter().position(|i| i == a) {
-                    if pos > index {
-                        incorrect = true;
-                        break 'next;
-                    }
-                }
-            }
-        }
-
-        if incorrect {
-            new.sort_by(|first, second| {
-                if rules.iter().any(|(a, b)| a == first && b == second) {
-                    return Ordering::Less;
-                } else if rules.iter().any(|(a, b)| a == second && b == first) {
-                    return Ordering::Greater;
-                }
-
-                Ordering::Equal
-            });
-        }
-
-        if incorrect {
-            sum += new[new.len() / 2].parse::<u32>().unwrap();
-        }
-    }
-
-    sum
+            acc
+        })
 }
 
 aoc2024::test!(
