@@ -1,6 +1,16 @@
-use std::collections::{HashMap, HashSet};
+use std::{collections::HashSet, hash::Hash};
 
-type PosDirMap = HashMap<(usize, usize), HashSet<(isize, isize)>>;
+#[derive(PartialEq, Eq)]
+struct PosDir((usize, usize), (isize, isize));
+
+impl Hash for PosDir {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        state.write_u8(self.0.0 as u8);
+        state.write_u8(self.0.1 as u8);
+        state.write_u8(self.1.0 as u8);
+        state.write_u8(self.1.1 as u8);
+    }
+}
 
 aoc2024::main!("../../assets/day06.txt");
 
@@ -25,12 +35,12 @@ fn part1(input: &str) -> u32 {
 
 fn simulate(
     grid: &[&[u8]],
-    (mut gx, mut gy): (usize, usize),
-    (mut dx, mut dy): (isize, isize),
+    start @ (mut gx, mut gy): (usize, usize),
+    idir @ (mut dx, mut dy): (isize, isize),
     (ox, oy): (usize, usize),
-) -> Result<PosDirMap, ()> {
-    let mut visited = HashMap::new();
-    visited.insert((gx, gy), HashSet::from_iter([(dx, dy)]));
+) -> Result<HashSet<PosDir>, ()> {
+    let mut visited = HashSet::new();
+    visited.insert(PosDir(start, idir));
 
     loop {
         let (nx, ny) = (gx as isize + dx, gy as isize + dy);
@@ -47,9 +57,13 @@ fn simulate(
             continue;
         }
 
-        let entry = visited.entry(np).or_insert(HashSet::new());
-        if !entry.insert((dx, dy)) {
-            return Err(()); // Cycle detected
+        // Only store direction when simulating with additional obstacle
+        if ox != usize::MAX && oy != usize::MAX {
+            if !visited.insert(PosDir(np, (dx, dy))) {
+                return Err(()); // Cycle detected
+            }
+        } else {
+            visited.insert(PosDir(np, idir)); // always use same orientation
         }
 
         gx = nx;
@@ -76,7 +90,7 @@ fn part2(input: &str) -> u32 {
     simulate(&grid, start, (0, -1), (usize::MAX, usize::MAX))
         .unwrap()
         .into_iter()
-        .filter_map(|(pos, _)| simulate(&grid, start, (0, -1), pos).err())
+        .filter_map(|PosDir(pos, _)| simulate(&grid, start, (0, -1), pos).err())
         .count() as u32
 }
 
