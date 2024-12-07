@@ -12,36 +12,27 @@ fn part1(input: &str) -> u64 {
     });
 
     input
-        .into_iter()
-        .filter(|(e, ns)| check(ns, 0, 0, *e, false))
+        .filter(|(e, ns)| check(ns, *e, false))
         .map(|(e, _)| e)
         .sum::<u64>()
 }
 
-fn check(nums: &[u64], index: usize, sum: u64, exp: u64, p2: bool) -> bool {
-    if index >= nums.len() {
-        return sum == exp;
+fn check(nums: &[u64], sum: u64, p2: bool) -> bool {
+    if nums.is_empty() {
+        return sum == 0;
     }
 
-    if sum > exp {
-        return false;
-    }
+    let (cur, nums) = nums.split_last().unwrap();
 
-    let cur = nums[index];
-
-    let comb = if p2 && sum > 0 {
-        let mut offset = 10;
-        while cur >= offset {
-            offset *= 10;
+    sum % cur == 0 && check(nums, sum / cur, p2)
+        || sum >= *cur && check(nums, sum - cur, p2)
+        || p2 && {
+            let mut offset = 10;
+            while cur >= &offset {
+                offset *= 10;
+            }
+            sum % offset == *cur && check(nums, sum / offset, p2)
         }
-        sum * offset + cur
-    } else {
-        0
-    };
-
-    check(nums, index + 1, sum + cur, exp, p2)
-        || check(nums, index + 1, sum * cur, exp, p2)
-        || p2 && sum > 0 && check(nums, index + 1, comb, exp, p2)
 }
 
 fn part2(input: &str) -> u64 {
@@ -56,8 +47,7 @@ fn part2(input: &str) -> u64 {
     });
 
     input
-        .into_iter()
-        .filter(|(e, ns)| check(ns, 0, 0, *e, true))
+        .filter(|(e, ns)| check(ns, *e, true))
         .map(|(e, _)| e)
         .sum::<u64>()
 }
