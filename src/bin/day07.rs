@@ -13,33 +13,35 @@ fn part1(input: &str) -> u64 {
 
     input
         .into_iter()
-        .filter(|(e, ns)| check(ns, 0, *e, false))
+        .filter(|(e, ns)| check(ns, 0, 0, *e, false))
         .map(|(e, _)| e)
         .sum::<u64>()
 }
 
-fn check(nums: &[u64], sum: u64, expected: u64, p2: bool) -> bool {
-    if sum > expected {
+fn check(nums: &[u64], index: usize, sum: u64, exp: u64, p2: bool) -> bool {
+    if index >= nums.len() {
+        return sum == exp;
+    }
+
+    if sum > exp {
         return false;
     }
 
-    if nums.is_empty() {
-        return sum == expected;
-    }
-
-    let cur = nums[0];
-    let rem = &nums[1..];
+    let cur = nums[index];
 
     let comb = if p2 && sum > 0 {
-        let digits = (cur as f64).log(10.0).floor() as u32 + 1;
-        sum * 10u64.pow(digits) + cur
+        let mut offset = 10;
+        while cur >= offset {
+            offset *= 10;
+        }
+        sum * offset + cur
     } else {
         0
     };
 
-    check(rem, sum + cur, expected, p2)
-        || check(rem, sum * cur, expected, p2)
-        || p2 && sum > 0 && check(rem, comb, expected, p2)
+    check(nums, index + 1, sum + cur, exp, p2)
+        || check(nums, index + 1, sum * cur, exp, p2)
+        || p2 && sum > 0 && check(nums, index + 1, comb, exp, p2)
 }
 
 fn part2(input: &str) -> u64 {
@@ -55,7 +57,7 @@ fn part2(input: &str) -> u64 {
 
     input
         .into_iter()
-        .filter(|(e, ns)| check(ns, 0, *e, true))
+        .filter(|(e, ns)| check(ns, 0, 0, *e, true))
         .map(|(e, _)| e)
         .sum::<u64>()
 }
