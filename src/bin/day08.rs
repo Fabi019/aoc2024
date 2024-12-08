@@ -18,32 +18,49 @@ fn part1(input: &str) -> u32 {
         }
     }
 
+    find_antinodes(ants, (grid[0].len() as isize, grid.len() as isize), false) as u32
+}
+
+fn find_antinodes(
+    antennas: HashMap<u8, HashSet<(isize, isize)>>,
+    (width, height): (isize, isize),
+    multiples: bool,
+) -> usize {
     let mut antinodes = HashSet::new();
 
-    for (_, locs) in ants {
+    for (_, locs) in antennas {
+        if multiples {
+            antinodes.extend(&locs);
+        }
 
         for (i, l) in locs.iter().enumerate() {
             for ol in locs.iter().skip(i + 1) {
                 let (dx, dy) = (l.0 - ol.0, l.1 - ol.1);
 
-                let x = l.0 + dx;
-                let y = l.1 + dy;
-                
-                if !(x < 0 || y < 0 || y >= grid.len() as isize || x >= grid[0].len() as isize) {
-                    antinodes.insert((x, y));
-                }
+                for mult in 1.. {
+                    let mut inserted = false;
 
-                let x = ol.0 - dx;
-                let y = ol.1 - dy;
-                
-                if !(x < 0 || y < 0 || y >= grid.len() as isize || x >= grid[0].len() as isize) {
-                    antinodes.insert((x, y));
+                    let (x, y) = (l.0 + dx * mult, l.1 + dy * mult);
+                    if !(x < 0 || y < 0 || y >= height || x >= width) {
+                        antinodes.insert((x, y));
+                        inserted = true;
+                    }
+
+                    let (x, y) = (ol.0 - dx * mult, ol.1 - dy * mult);
+                    if !(x < 0 || y < 0 || y >= height || x >= width) {
+                        antinodes.insert((x, y));
+                        inserted = true;
+                    }
+
+                    if !inserted || !multiples {
+                        break;
+                    }
                 }
             }
         }
     }
 
-    antinodes.len() as u32
+    antinodes.len()
 }
 
 fn part2(input: &str) -> u32 {
@@ -62,45 +79,7 @@ fn part2(input: &str) -> u32 {
         }
     }
 
-    let mut antinodes = HashSet::new();
-
-    for (_, locs) in ants {
-        for (i, l) in locs.iter().enumerate() {
-            antinodes.insert(*l);
-
-            for ol in locs.iter().skip(i + 1) {
-                antinodes.insert(*ol);
-
-                let (dx, dy) = (l.0 - ol.0, l.1 - ol.1);
-
-                for mult in 1.. {
-                    let mut inserted = false;
-
-                    let x = l.0 + dx * mult;
-                    let y = l.1 + dy * mult;
-                    
-                    if !(x < 0 || y < 0 || y >= grid.len() as isize || x >= grid[0].len() as isize) {
-                        antinodes.insert((x, y));
-                        inserted = true;
-                    }
-
-                    let x = ol.0 - dx * mult;
-                    let y = ol.1 - dy * mult;
-                    
-                    if !(x < 0 || y < 0 || y >= grid.len() as isize || x >= grid[0].len() as isize) {
-                        antinodes.insert((x, y));
-                        inserted = true;
-                    }
-
-                    if !inserted {
-                        break;
-                    }
-                }
-            }
-        }
-    }
-
-    antinodes.len() as u32
+    find_antinodes(ants, (grid[0].len() as isize, grid.len() as isize), true) as u32
 }
 
 aoc2024::test!(
@@ -117,5 +96,7 @@ aoc2024::test!(
 .........A..
 ............
 ............
-", 14, 34
+",
+    14,
+    34
 );
