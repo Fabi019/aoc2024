@@ -25,48 +25,56 @@ fn part1(input: &str) -> usize {
 
 fn explore_plot(
     grid: &[&[u8]],
-    start: (usize, usize),
+    start @ (sx, sy): (usize, usize),
     visited: &mut HashSet<(usize, usize)>,
     sides: bool,
 ) -> (usize, usize) {
-    let mut area = HashSet::new();
-    area.insert(start);
+    let mut area = 1;
+    visited.insert(start);
 
+    let mut pcount = 0;
     let mut perimeter = HashSet::new();
 
     let mut queue = VecDeque::new();
     queue.push_back(start);
 
-    let search = grid[start.1][start.0];
+    let search = grid[sy][sx];
 
     while let Some(pos @ (cx, cy)) = queue.pop_front() {
         for (dx, dy) in &[(-1, 0), (1, 0), (0, -1), (0, 1)] {
             let np @ (x, y) = (cx as isize + dx, cy as isize + dy);
             if x < 0 || y < 0 || y >= grid.len() as isize || x >= grid[0].len() as isize {
-                perimeter.insert((pos, np));
+                if sides {
+                    perimeter.insert((pos, np));
+                } else {
+                    pcount += 1;
+                }
                 continue;
             }
-
-            let c = grid[y as usize][x as usize];
+            let npos @ (x, y) = (x as usize, y as usize);
+            let c = grid[y][x];
             if c == search {
-                if area.insert((x as usize, y as usize)) {
-                    queue.push_back((x as usize, y as usize));
+                if visited.insert(npos) {
+                    area += 1;
+                    queue.push_back(npos);
                 }
-            } else {
+            } else if sides {
                 perimeter.insert((pos, np));
+            } else {
+                pcount += 1;
             }
         }
     }
 
-    visited.extend(&area);
-
     if sides {
-        return (area.len(), count_sides(&perimeter));
+        return (area, count_sides(&perimeter));
     }
 
-    (area.len(), perimeter.len())
+    (area, pcount)
 }
 
+#[allow(clippy::nonminimal_bool)]
+#[allow(clippy::type_complexity)]
 fn count_sides(perimeter: &HashSet<((usize, usize), (isize, isize))>) -> usize {
     let inner = perimeter
         .iter()
@@ -77,40 +85,35 @@ fn count_sides(perimeter: &HashSet<((usize, usize), (isize, isize))>) -> usize {
         .map(|e| e.1)
         .collect::<HashSet<(isize, isize)>>();
 
-    if inner.len() == 1 {
-        return 4; // single piece (4 edges)
+    if inner.len() == 1 || inner.len() == 2 {
+        return 4; // always has 4 edges
     }
 
     let mut edges = 0;
 
+    fn get_nbs(x: isize, y: isize, set: &HashSet<(isize, isize)>) -> (bool, bool, bool, bool) {
+        (
+            set.contains(&(x - 1, y)), // left
+            set.contains(&(x + 1, y)), // right
+            set.contains(&(x, y - 1)), // top
+            set.contains(&(x, y + 1)), // bottom
+        )
+    }
+
     // find all convex edges
     for (x, y) in &inner {
-        let offsets = &[(-1, 0), (1, 0), (0, -1), (0, 1)];
-        let left = outer.contains(&(x + offsets[0].0, y + offsets[0].1));
-        let right = outer.contains(&(x + offsets[1].0, y + offsets[1].1));
-        let top = outer.contains(&(x + offsets[2].0, y + offsets[2].1));
-        let bottom = outer.contains(&(x + offsets[3].0, y + offsets[3].1));
+        let (left, right, top, bottom) = get_nbs(*x, *y, &outer);
 
         // cases with 1 edge
-        if left && bottom && !top && !right {
-            if !inner.contains(&(x - 1, y + 1)) {
-                edges += 1;
-            }
-        } else if left && top && !bottom && !right {
-            if !inner.contains(&(x - 1, y - 1)) {
-                edges += 1;
-            }
-        } else if top && right && !bottom && !left {
-            if !inner.contains(&(x + 1, y - 1)) {
-                edges += 1;
-            }
-        } else if right && bottom && !left && !top {
-            if !inner.contains(&(x + 1, y + 1)) {
-                edges += 1;
-            }
+        if left && bottom && !top && !right && !inner.contains(&(x - 1, y + 1))
+            || left && top && !bottom && !right && !inner.contains(&(x - 1, y - 1))
+            || top && right && !bottom && !left && !inner.contains(&(x + 1, y - 1))
+            || right && bottom && !left && !top && !inner.contains(&(x + 1, y + 1))
+        {
+            edges += 1;
         }
 
-        // cases with 2 edges
+        // cases with 2 edges (check diagonal to not count double with concave edges)
         if left && top && right && !bottom {
             let lt = inner.contains(&(x - 1, y - 1));
             let rt = inner.contains(&(x + 1, y - 1));
@@ -148,31 +151,23 @@ fn count_sides(perimeter: &HashSet<((usize, usize), (isize, isize))>) -> usize {
 
     // find all concave edges
     for (x, y) in &outer {
-        let offsets = &[(-1, 0), (1, 0), (0, -1), (0, 1)];
-        let left = inner.contains(&(x + offsets[0].0, y + offsets[0].1));
-        let right = inner.contains(&(x + offsets[1].0, y + offsets[1].1));
-        let top = inner.contains(&(x + offsets[2].0, y + offsets[2].1));
-        let bottom = inner.contains(&(x + offsets[3].0, y + offsets[3].1));
+        let (left, right, top, bottom) = get_nbs(*x, *y, &inner);
 
         // cases with 1 edge
-        if left && bottom && !top && !right {
-            edges += 1;
-        } else if left && top && !bottom && !right {
-            edges += 1;
-        } else if top && right && !bottom && !left {
-            edges += 1;
-        } else if right && bottom && !left && !top {
+        if left && bottom && !top && !right
+            || top && right && !bottom && !left
+            || right && bottom && !left && !top
+            || left && top && !bottom && !right
+        {
             edges += 1;
         }
 
         // cases with 2 edges
-        if left && top && right && !bottom {
-            edges += 2;
-        } else if top && right && bottom && !left {
-            edges += 2;
-        } else if right && bottom && left && !top {
-            edges += 2;
-        } else if bottom && left && top && !right {
+        if left && top && right && !bottom
+            || top && right && bottom && !left
+            || right && bottom && left && !top
+            || bottom && left && top && !right
+        {
             edges += 2;
         }
 
