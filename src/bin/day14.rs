@@ -4,91 +4,88 @@ const HEIGHT: i32 = if cfg!(test) { 7 } else { 103 };
 aoc2024::main!("../../assets/day14.txt");
 
 fn part1(input: &str) -> usize {
+    let mut robots = input
+        .lines()
+        .map(|l| {
+            let (pos, vel) = l.split_once(" ").unwrap();
+            let (px, py) = pos[2..].split_once(",").unwrap();
+            let (vx, vy) = vel[2..].split_once(",").unwrap();
+            (
+                (px.parse::<i32>().unwrap(), py.parse::<i32>().unwrap()),
+                (vx.parse::<i32>().unwrap(), vy.parse::<i32>().unwrap()),
+            )
+        })
+        .collect::<Vec<_>>();
 
-    let robots = input.lines().map(|l| {
-        let (pos, vel) = l.split_once(" ").unwrap();
-        let (px, py) = pos[2..].split_once(",").unwrap();
-        let (vx, vy) = vel[2..].split_once(",").unwrap();
-        ((px.parse::<i32>().unwrap(), py.parse::<i32>().unwrap()), (vx.parse::<i32>().unwrap(), vy.parse::<i32>().unwrap()))
-    });
-
-    let mut positions = Vec::new();
-    let steps = 100;
-    
-    for ((px, py), (vx, vy)) in robots {
-        let mut x = (px + vx * steps) % WIDTH;
-        let mut y = (py + vy * steps) % HEIGHT;
-
-        if x < 0 {
-            x += WIDTH;
-        }
-
-        if y < 0 {
-            y += HEIGHT;
-        }
-
-        positions.push((x, y));
-    }
-
-    let middle_x = WIDTH / 2;
-    let middle_y = HEIGHT / 2;
-
-    let mut quad = [0; 4];
-    quad[0] = positions.iter().filter(|&p| p.0 < middle_x && p.1 < middle_y).count();
-    quad[1] = positions.iter().filter(|&p| p.0 > middle_x && p.1 < middle_y).count();
-    quad[2] = positions.iter().filter(|&p| p.0 < middle_x && p.1 > middle_y).count();
-    quad[3] = positions.iter().filter(|&p| p.0 > middle_x && p.1 > middle_y).count();
-
-    quad[0] * quad[1] * quad[2] * quad[3]
+    let quads = cycle(&mut robots, 100, (WIDTH / 2, HEIGHT / 2));
+    quads.into_iter().product()
 }
 
-fn part2(input: &str) -> usize {
-    let mut robots = input.lines().map(|l| {
-        let (pos, vel) = l.split_once(" ").unwrap();
-        let (px, py) = pos[2..].split_once(",").unwrap();
-        let (vx, vy) = vel[2..].split_once(",").unwrap();
-        ((px.parse::<i32>().unwrap(), py.parse::<i32>().unwrap()), (vx.parse::<i32>().unwrap(), vy.parse::<i32>().unwrap()))
-    }).collect::<Vec<_>>();
+#[inline(always)]
+#[allow(clippy::type_complexity)]
+fn cycle(robots: &mut [((i32, i32), (i32, i32))], step: i32, middle: (i32, i32)) -> [usize; 4] {
+    let mut quads = [0; 4];
+    for ((px, py), (vx, vy)) in robots.iter_mut() {
+        *px = (*px + *vx * step) % WIDTH;
+        *py = (*py + *vy * step) % HEIGHT;
+
+        if *px < 0 {
+            *px += WIDTH;
+        }
+
+        if *py < 0 {
+            *py += HEIGHT;
+        }
+
+        if *px == middle.0 || *py == middle.1 {
+            continue;
+        }
+
+        let quad = match (*px < middle.0, *py < middle.1) {
+            (true, true) => 0,
+            (false, true) => 1,
+            (true, false) => 2,
+            (false, false) => 3,
+        };
+
+        quads[quad] += 1;
+    }
+    quads
+}
+
+fn part2(input: &str) -> i32 {
+    let mut robots = input
+        .lines()
+        .map(|l| {
+            let (pos, vel) = l.split_once(" ").unwrap();
+            let (px, py) = pos[2..].split_once(",").unwrap();
+            let (vx, vy) = vel[2..].split_once(",").unwrap();
+            (
+                (px.parse::<i32>().unwrap(), py.parse::<i32>().unwrap()),
+                (vx.parse::<i32>().unwrap(), vy.parse::<i32>().unwrap()),
+            )
+        })
+        .collect::<Vec<_>>();
 
     let total_robots = robots.len();
 
     for steps in 1..(WIDTH * HEIGHT) {
-        for ((px, py), (vx, vy)) in robots.iter_mut() {
-            *px = (*px + *vx) % WIDTH;
-            *py = (*py + *vy) % HEIGHT;
-
-            if *px < 0 {
-                *px += WIDTH;
-            }
-
-            if *py < 0 {
-                *py += HEIGHT;
-            }
-        }
-
-        let middle_x = WIDTH / 2;
-        let middle_y = HEIGHT / 2;
-    
-        let mut quads = [0; 4];
-        quads[0] = robots.iter().filter(|(p, _)| p.0 < middle_x && p.1 < middle_y).count();
-        quads[1] = robots.iter().filter(|(p, _)| p.0 > middle_x && p.1 < middle_y).count();
-        quads[2] = robots.iter().filter(|(p, _)| p.0 < middle_x && p.1 > middle_y).count();
-        quads[3] = robots.iter().filter(|(p, _)| p.0 > middle_x && p.1 > middle_y).count();
-
+        let quads = cycle(&mut robots, 1, (WIDTH / 2, HEIGHT / 2));
         for quad in quads {
             if quad >= (total_robots as f64 / 2.2) as usize {
-                println!("{steps}");
-                for y in 0..HEIGHT {
-                    for x in 0..WIDTH {
-                        if robots.iter().any(|e| e.0 == (x, y)) {
-                            print!("X");
-                        } else {
-                            print!(".");
-                        }
-                    }
-                    println!();
-                }
-                println!();
+                // println!("{steps}");
+                // for y in 0..HEIGHT {
+                //     for x in 0..WIDTH {
+                //         if robots.iter().any(|e| e.0 == (x, y)) {
+                //             print!("X");
+                //         } else {
+                //             print!(".");
+                //         }
+                //     }
+                //     println!();
+                // }
+                // println!();
+                return steps;
             }
         }
     }
@@ -110,5 +107,7 @@ p=9,3 v=2,3
 p=7,3 v=-1,2
 p=2,4 v=2,-3
 p=9,5 v=-3,-3
-", 12, 0
+",
+    12,
+    0
 );
