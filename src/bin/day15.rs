@@ -1,19 +1,5 @@
 aoc2024::main!("../../assets/day15.txt");
 
-fn print_map(map: &[Vec<u8>], (rx, ry): (usize, usize)) {
-    for y in 0..map.len() {
-        for x in 0..map[0].len() {
-            if y == ry && x == rx {
-                print!("@");
-            } else {
-                print!("{}", map[y][x] as char);
-            }
-        }
-        println!();
-    }
-    println!();
-}
-
 fn part1(input: &str) -> usize {
     let (map, instr) = input.split_once("\n\n").unwrap();
     let mut map = map
@@ -23,7 +9,6 @@ fn part1(input: &str) -> usize {
     let instr = instr.as_bytes();
 
     let (mut rx, mut ry) = (map[0].len() / 2 - 1, map.len() / 2 - 1);
-
     debug_assert!(map[ry][rx] == b'@');
     map[ry][rx] = b'.';
 
@@ -33,10 +18,8 @@ fn part1(input: &str) -> usize {
             b'>' => (1, 0),
             b'^' => (0, -1),
             b'v' => (0, 1),
-            _ => continue,
+            _ => continue, // skip newlines
         };
-
-        //println!("Move {}:", *ins as char);
 
         let (tx, ty) = (rx.wrapping_add_signed(dx), ry.wrapping_add_signed(dy));
         let i = map[ty][tx];
@@ -62,15 +45,17 @@ fn part1(input: &str) -> usize {
 
         rx = tx;
         ry = ty;
-
-        //print_map(&map, (rx, ry));
     }
 
+    gps_sum(&map, b'O')
+}
+
+fn gps_sum(map: &[Vec<u8>], search: u8) -> usize {
     let mut gps_sum = 0;
 
     for y in 0..map.len() {
         for x in 0..map[0].len() {
-            if map[y][x] == b'O' {
+            if map[y][x] == search {
                 gps_sum += y * 100 + x;
             }
         }
@@ -84,28 +69,22 @@ fn part2(input: &str) -> usize {
     let mut map = map
         .lines()
         .map(|l| {
-            let mut line = Vec::new();
-            for c in l.as_bytes() {
-                let n = match c {
-                    b'.' => b"..",
-                    b'#' => b"##",
-                    b'O' => b"[]",
-                    b'@' => b"@.",
-                    c => unreachable!("Invalid map symbol: {}", *c as char),
-                };
-                line.extend_from_slice(n);
-            }
-            line
+            l.chars()
+                .flat_map(|c| *match c {
+                    '.' => b"..",
+                    '#' => b"##",
+                    'O' => b"[]",
+                    '@' => b"@.",
+                    c => unreachable!("Invalid map symbol: {c}"),
+                })
+                .collect::<Vec<_>>()
         })
         .collect::<Vec<_>>();
     let instr = instr.as_bytes();
 
     let (mut rx, mut ry) = (map[0].len() / 2 - 2, map.len() / 2 - 1);
-
     debug_assert!(map[ry][rx] == b'@');
     map[ry][rx] = b'.';
-
-    //print_map(&map, (rx, ry));
 
     'next: for ins in instr {
         let (dx, dy) = match ins {
@@ -152,18 +131,20 @@ fn part2(input: &str) -> usize {
                     for i in 0..obstacles.len() {
                         let (px, py) = obstacles[i];
                         let ay = py.wrapping_add_signed(dy); // check whats behind
-                        let c = map[ay][px];
-                        if c == b'#' {
-                            continue 'next; // impossible to push
-                        } else if c == b'[' && !obstacles.contains(&(px, ay)) {
-                            obstacles.push((px, ay));
-                            obstacles.push((px + 1, ay));
-                            modified = true;
-                        } else if c == b']' && !obstacles.contains(&(px, ay)) {
-                            obstacles.push((px, ay));
-                            obstacles.push((px - 1, ay));
-                            modified = true;
-                        }
+                        match map[ay][px] {
+                            b'#' => continue 'next, // impossible to push
+                            b'[' if !obstacles.contains(&(px, ay)) => {
+                                obstacles.push((px, ay));
+                                obstacles.push((px + 1, ay));
+                                modified = true;
+                            }
+                            b']' if !obstacles.contains(&(px, ay)) => {
+                                obstacles.push((px, ay));
+                                obstacles.push((px - 1, ay));
+                                modified = true;
+                            }
+                            _ => {}
+                        };
                     }
 
                     if !modified {
@@ -182,21 +163,9 @@ fn part2(input: &str) -> usize {
 
         rx = tx;
         ry = ty;
-
-        //print_map(&map, (rx, ry));
     }
 
-    let mut gps_sum = 0;
-
-    for y in 0..map.len() {
-        for x in 0..map[0].len() {
-            if map[y][x] == b'[' {
-                gps_sum += y * 100 + x;
-            }
-        }
-    }
-
-    gps_sum
+    gps_sum(&map, b'[')
 }
 
 aoc2024::test!(
