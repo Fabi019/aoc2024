@@ -27,10 +27,8 @@ fn dijkstra(grid: &[&[u8]], first_path: bool) -> u32 {
     let mut places = HashSet::new();
 
     while let Some((Reverse(cost), pos @ (x, y), dir, path)) = queue.pop() {
-        if let Some(min) = min_cost {
-            if cost > min {
-                continue;
-            }
+        if cost > min_cost.unwrap_or(u32::MAX) {
+            continue;
         }
 
         if pos == end {
@@ -38,24 +36,22 @@ fn dijkstra(grid: &[&[u8]], first_path: bool) -> u32 {
                 return cost;
             }
 
-            println!("Found path with cost {cost} len={}", path.len());
-            if min_cost.is_none() {
+            if let Some(min) = min_cost {
+                if min == cost {
+                    places.extend(path);
+                }
+            } else {
                 min_cost = Some(cost);
-            }
-
-            if min_cost.unwrap() == cost {
-                places.extend(path);
             }
 
             continue;
         }
 
-        if let Some(c) = visited.get(&(pos, dir)) {
-            if c < &cost {
-                continue;
-            }
+        let c = visited.entry((pos, dir)).or_insert(u32::MAX);
+        if *c < cost {
+            continue;
         }
-        visited.insert((pos, dir), cost);
+        *c = cost;
 
         for d @ &(dx, dy) in &[(1, 0), (0, 1), (-1, 0), (0, -1)] {
             // Prevent going back
@@ -63,8 +59,8 @@ fn dijkstra(grid: &[&[u8]], first_path: bool) -> u32 {
                 continue;
             }
 
-            let x = (x as isize + dx) as usize;
-            let y = (y as isize + dy) as usize;
+            let x = x.wrapping_add_signed(dx);
+            let y = y.wrapping_add_signed(dy);
 
             let c = grid[y][x];
             if c == b'#' {
@@ -73,10 +69,10 @@ fn dijkstra(grid: &[&[u8]], first_path: bool) -> u32 {
 
             let cost = if *d != dir { cost + 1000 } else { cost };
 
-            //let mut path = path.clone();
-            //path.push((x, y));
             let mut path = path.clone();
-            path.push((x, y));
+            if !first_path {
+                path.push((x, y));
+            }
 
             queue.push((Reverse(cost + 1), (x, y), (dx, dy), path));
         }
