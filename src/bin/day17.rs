@@ -57,25 +57,19 @@ fn cycle(
         0 => {
             let op = combo_op(op, *r_a, *r_b, *r_c);
             *r_a /= 2u64.pow(op as u32);
-            println!("ADV {op}: A = A / 2^{op} = {r_a}");
         }
 
         // bxl: xor
-        1 => {
-            *r_b ^= op;
-            println!("BXL {op}: B = B ^ {op} = {r_b}");
-        }
+        1 => *r_b ^= op,
 
         // bst
         2 => {
             let op = combo_op(op, *r_a, *r_b, *r_c);
             *r_b = op % 8;
-            println!("BST {op}: B = {op} % 8 = {r_b}");
         }
 
         // jnz: jump not zero
         3 => {
-            println!("JNZ {op}: A = {r_a}");
             if *r_a != 0 {
                 *r_ip = op as usize;
                 return None;
@@ -83,33 +77,27 @@ fn cycle(
         }
 
         // bxc
-        4 => {
-            *r_b ^= *r_c;
-            println!("BXC {op}: B = B ^ C = {r_b} ({r_c})");
-        }
+        4 => *r_b ^= *r_c,
 
         // out
         5 => {
             let op = combo_op(op, *r_a, *r_b, *r_c) % 8;
             let _ = output.insert(op);
-            println!("OUT {op}");
         }
 
         // bdv
         6 => {
             let op = combo_op(op, *r_a, *r_b, *r_c);
             *r_b = *r_a / 2u64.pow(op as u32);
-            println!("BDV {op}: B = A / 2^{op}");
         }
 
         // cdv
         7 => {
             let op = combo_op(op, *r_a, *r_b, *r_c);
             *r_c = *r_a / 2u64.pow(op as u32);
-            println!("CDV {op}: C = A / 2^{op}");
         }
 
-        i => unreachable!("Illegal instruction {i} at IP={r_ip}"),
+        i => unreachable!("Illegal instruction {i} at {r_ip}"),
     }
 
     *r_ip += 2;
@@ -117,54 +105,45 @@ fn cycle(
 }
 
 fn part2(input: &str) -> u64 {
-    let (register, program) = input.split_once("\n\n").unwrap();
-    let mut register = register.lines().map(|l| l[12..].parse::<u64>().unwrap());
+    let (_register, program) = input.split_once("\n\n").unwrap();
     let program = program.lines().next().unwrap()[9..]
         .split(",")
         .map(|c| c.parse::<u64>().unwrap())
         .collect::<Vec<_>>();
 
-    // BST 4	; B = A % 8
-    // BXL 1	; B = B ^ 1     ; +- 1 if even/odd
-    // CDV 5	; C = A / 2**B
-    // BXL 5	; B = B ^ 5
-    // BXC 5	; B = B ^ C
-    // ADV 3	; A = A / 2**3 = A / 8
-    // OUT 5	; B % 8
-    // JNZ 0	; END if A=0 otherwise jump to top
+    let mut a = 0;
 
-    let _ = register.next().unwrap();
-    let r_b = register.next().unwrap();
-    let r_c = register.next().unwrap();
-
-    let mut r_a = 8u64.pow(15);
-
-    let mut out_index = program.len() - 1;
-
-    let mut r_a = 0;
+    // check each digit going from the back
     for i in 0..program.len() {
-        let mut na = r_a * 8;
-        loop {
-            let mut ta = na;
-            let mut out_index = program.len() - i - 1;
+        let mut na = a * 8;
 
-            while ta != 0 {
-                let mut b = ta % 8;     // BST 4
-                b ^= 1;     // BXL 1
-                let c = ta / 2u64.pow(b as u32);    // CDV 5
-                b ^= 5;     // BXL 5
-                b ^= c;     // BXC 5
-        
-                if out_index < program.len() && b % 8 == program[out_index] {
-                    out_index += 1;
-                    ta /= 8;
-                } else {
-                    break;
+        // loops through every possible a%8 (a+0, .., a+7)
+        loop {
+            let mut out_index = program.len() - i - 1; // compare only from out_index..end
+            let mut r_a = na;
+
+            // A will be /= 8 in every run
+            'outer: while r_a != 0 {
+                let mut r_ip = 0;
+                let mut r_b = 0;
+                let mut r_c = 0;
+
+                loop {
+                    if let Some(out) = cycle(&program, &mut r_ip, &mut r_a, &mut r_b, &mut r_c) {
+                        // check if digits match
+                        if out_index < program.len() && out == program[out_index] {
+                            out_index += 1;
+                            break; // rerun until a == 0
+                        } else {
+                            break 'outer; // check a+1
+                        }
+                    }
                 }
             }
 
+            // check if all digits were validated
             if out_index == program.len() {
-                r_a = na;
+                a = na;
                 break;
             }
 
@@ -172,110 +151,7 @@ fn part2(input: &str) -> u64 {
         }
     }
 
-    return r_a;
-
-    // loop {
-    //     let ca = a * 8;
-
-    //     while ca != 0 {
-    //         let mut b = r_a % 8;
-    //         b ^= 1;
-    //         let c = ca / 2u64.pow(r_b as u32);
-    //         b ^= 5;
-    //         b ^= c;
-    
-    //         if b % 8 == program[out_index] {
-    //             r_a *= 8;
-    //         } else {
-    //             r_a += 1;
-    //             break;
-    //         }
-
-    //         out_index -= 1;
-    //         ca *= 8;
-    //     }
-        
-    //     if out_index == 0 {
-    //         return r_a;
-    //     }
-    //     out_index = out_index.wrapping_sub(1);
-    // }
-
-
-    // loop {
-    //     b = r_a % 8;
-    //     b ^= 1;
-    //     c = r_a / 2u64.pow(r_b as u32);
-    //     b ^= 5;
-    //     b ^= c;
-
-    //     if b % 8 == program[out_index] {
-    //         r_a *= 8;
-    //     } else {
-    //         r_a += 1;
-    //         out_index = program.len() - 1;
-    //         continue;
-    //     }
-        
-    //     if out_index == 0 {
-    //         return r_a;
-    //     }
-    //     out_index = out_index.wrapping_sub(1);
-    // }
-
-    // let start = 35215500000000; //8u64.pow(15);
-    // let end = 8u64.pow(16);
-    // 'next: for a in start..end {
-    //     let mut r_a = a;
-    //     let mut r_b = r_b;
-    //     let mut r_c = r_c;
-
-    //     let mut r_ip = 0;
-
-    //     let mut out_index = 0;
-
-    //     if a % 200_000_000 == 0 {
-    //         println!("At {a}.. {}", ((a - start) as f64 / end as f64) * 100.0);
-    //     }
-
-    //     loop {
-    //         r_b = r_a % 8;
-    //         r_b = r_b ^ 1;
-    //         r_c = r_a / 2u64.pow(r_b as u32);
-    //         r_b = r_b ^ 5;
-    //         r_b = r_b ^ r_c;
-    //         r_a = r_a / 8;
-
-    //         if out_index >= program.len() || r_b % 8 != program[out_index] {
-    //             continue 'next;
-    //         }
-    //         out_index += 1;
-
-    //         if r_a == 0 {
-    //             break;
-    //         }
-    //     }
-
-
-        // loop {
-        //     if let Some(out) = cycle(&program, &mut r_ip, &mut r_a, &mut r_b, &mut r_c) {
-        //         if out_index >= program.len() || out != program[out_index] {
-        //             continue 'next;
-        //         }
-        //         out_index += 1;
-        //     }
-            
-        //     if r_ip >= program.len() {
-        //         break;
-        //     }
-        // }
-
-    //     if out_index == program.len() {
-    //         return a;
-    //     }
-    // }
-
-    unreachable!()
+    a
 }
 
 aoc2024::test!(
