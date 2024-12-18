@@ -10,10 +10,10 @@ macro_rules! main {
 
         fn main() {
             let now = std::time::Instant::now();
-            println!("Part 1: {} ({:?})", part1(INPUT), now.elapsed());
+            println!("Part 1: {:?} ({:?})", part1(INPUT), now.elapsed());
 
             let now = std::time::Instant::now();
-            println!("Part 2: {} ({:?})", part2(INPUT), now.elapsed());
+            println!("Part 2: {:?} ({:?})", part2(INPUT), now.elapsed());
         }
     };
 }
