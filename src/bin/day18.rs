@@ -57,26 +57,42 @@ fn part2(input: &str) -> (usize, usize) {
     let mut grid = vec![vec![false; SIZE]; SIZE];
 
     let take = if cfg!(test) { 12 } else { 1024 };
-    let lines = input.lines().map(|l| {
-        let (x, y) = l.split_once(",").unwrap();
-        let x = x.parse::<usize>().unwrap();
-        let y = y.parse::<usize>().unwrap();
-        (x, y)
-    });
+    let lines = input
+        .lines()
+        .map(|l| {
+            let (x, y) = l.split_once(",").unwrap();
+            let x = x.parse::<usize>().unwrap();
+            let y = y.parse::<usize>().unwrap();
+            (x, y)
+        })
+        .collect::<Vec<_>>();
 
-    // add previous
-    for (x, y) in lines.clone().take(take) {
+    // add previous from p1
+    for &(x, y) in lines.iter().take(take) {
         grid[y][x] = true;
     }
 
-    for (x, y) in lines.skip(take) {
-        grid[y][x] = true;
+    // binary search
+    let mut start = 0;
+    let mut end = lines.len();
+    loop {
+        let middle = (end + start) / 2;
+
+        if start.abs_diff(middle) == 0 {
+            return lines[take + start];
+        }
+
+        let mut grid = grid.clone();
+        for &(x, y) in lines.iter().skip(take).take(middle) {
+            grid[y][x] = true;
+        }
+
         if bfs(&grid) == u32::MAX {
-            return (x, y);
+            end = middle;
+        } else {
+            start = middle;
         }
     }
-
-    unreachable!("All paths succeeded!");
 }
 
 aoc2024::test!(
