@@ -2,64 +2,73 @@ use std::collections::HashMap;
 
 aoc2024::main!("../../assets/day19.txt");
 
-fn part1(input: &str) -> u32 {
+fn part1(input: &str) -> usize {
     let (towels, designs) = input.split_once("\n\n").unwrap();
     let towels = towels.split(", ").collect::<Vec<_>>();
-    let designs = designs.lines();
 
-    let mut possible = 0;
-
-    for design in designs {
-        let towels = towels
-            .iter()
-            .cloned()
-            .filter(|d| design.contains(d))
-            .collect::<Vec<_>>();
-        if check_recursive(&towels, design, &mut HashMap::new()) > 0 {
-            possible += 1;
-        }
-    }
-
-    possible
+    designs
+        .lines()
+        .map(|d| {
+            let towel_map: HashMap<u8, Vec<&str>> =
+                towels.iter().fold(HashMap::new(), |mut acc, t| {
+                    if d.contains(t) {
+                        acc.entry(t.as_bytes()[0]).or_default().push(*t)
+                    }
+                    acc
+                });
+            check_recursive(&towel_map, d, &mut vec![usize::MAX; d.len()], true)
+        })
+        .sum()
 }
 
-fn check_recursive(towels: &[&str], design: &str, cache: &mut HashMap<String, usize>) -> usize {
+fn check_recursive(
+    towels: &HashMap<u8, Vec<&str>>,
+    design: &str,
+    cache: &mut [usize],
+    first: bool,
+) -> usize {
     if design.is_empty() {
         return 1;
     }
 
-    if let Some(ways) = cache.get(design) {
-        return *ways;
+    let value = cache[design.len() - 1];
+    if value != usize::MAX {
+        return value;
     }
 
     let mut ways = 0;
-    for towel in towels {
-        if design.starts_with(towel) {
-            ways += check_recursive(towels, design.strip_prefix(towel).unwrap(), cache);
+    if let Some(ts) = towels.get(&design.as_bytes()[0]) {
+        for towel in ts {
+            if let Some(design) = design.strip_prefix(towel) {
+                ways += check_recursive(towels, design, cache, first);
+                if first && ways > 0 {
+                    return 1;
+                }
+            }
         }
     }
 
-    cache.insert(design.to_string(), ways);
+    cache[design.len() - 1] = ways;
     ways
 }
 
 fn part2(input: &str) -> usize {
     let (towels, designs) = input.split_once("\n\n").unwrap();
     let towels = towels.split(", ").collect::<Vec<_>>();
-    let designs = designs.lines();
 
-    let mut possible = 0;
-
-    for design in designs {
-        let towels = towels
-            .iter()
-            .cloned()
-            .filter(|d| design.contains(d))
-            .collect::<Vec<_>>();
-        possible += check_recursive(&towels, design, &mut HashMap::new());
-    }
-
-    possible
+    designs
+        .lines()
+        .map(|d| {
+            let towel_map: HashMap<u8, Vec<&str>> =
+                towels.iter().fold(HashMap::new(), |mut acc, t| {
+                    if d.contains(t) {
+                        acc.entry(t.as_bytes()[0]).or_default().push(*t)
+                    }
+                    acc
+                });
+            check_recursive(&towel_map, d, &mut vec![usize::MAX; d.len()], false)
+        })
+        .sum()
 }
 
 aoc2024::test!(
