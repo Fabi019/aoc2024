@@ -20,14 +20,14 @@ fn part1(input: &str) -> usize {
         .fold(0, |mut acc, chunk| {
             let ptr = chunk.as_mut_ptr() as *const __m256i;
             let mut v = unsafe { _mm256_loadu_si256(ptr) };
+            let prune = unsafe { _mm256_set1_epi32((1 << 24) - 1) };
 
             for _ in 0..2000 {
                 v = unsafe { _mm256_xor_si256(v, _mm256_slli_epi32(v, 6)) }; // n ^= n << 6
-                v = unsafe { _mm256_and_si256(v, _mm256_set1_epi32((2 << 23) - 1)) }; // n &= (2 << 23) - 1
+                v = unsafe { _mm256_and_si256(v, prune) }; // n &= (2 << 23) - 1
                 v = unsafe { _mm256_xor_si256(v, _mm256_srli_epi32(v, 5)) }; // n ^= n >> 5
-                v = unsafe { _mm256_and_si256(v, _mm256_set1_epi32((2 << 23) - 1)) }; // n &= (2 << 23) - 1
                 v = unsafe { _mm256_xor_si256(v, _mm256_slli_epi32(v, 11)) }; // n ^= n << 11
-                v = unsafe { _mm256_and_si256(v, _mm256_set1_epi32((2 << 23) - 1)) }; // n &= (2 << 23) - 1
+                v = unsafe { _mm256_and_si256(v, prune) }; // n &= (2 << 23) - 1
             }
 
             unsafe {
@@ -54,7 +54,6 @@ fn part2(input: &str) -> usize {
                 n &= (2 << 23) - 1;
 
                 n ^= n >> 5;
-                n &= (2 << 23) - 1;
 
                 n ^= n << 11;
                 n &= (2 << 23) - 1;
@@ -74,12 +73,14 @@ fn part2(input: &str) -> usize {
             .collect::<Vec<_>>();
         let mut visited = HashSet::new();
         for (i, seq) in changes.windows(4).enumerate() {
+            let hash = (seq[0] << 24) + (seq[1] << 16) + (seq[2] << 8) + seq[3];
+
             // only count first occurence of sequence
-            if !visited.insert(seq) {
+            if !visited.insert(hash as u32) {
                 continue;
             }
 
-            *sums.entry(seq.to_vec()).or_default() += prices[i + 4];
+            *sums.entry(hash as u32).or_default() += prices[i + 4];
         }
     }
 
