@@ -1,14 +1,14 @@
-use std::collections::{HashMap, HashSet, VecDeque};
+use std::collections::{HashMap, HashSet};
 
 aoc2024::main!("../../assets/day23.txt");
 
 fn part1(input: &str) -> u32 {
-    let mut network: HashMap<_, Vec<_>> = HashMap::new();
+    let mut network: HashMap<_, HashSet<_>> = HashMap::new();
 
     for con in input.lines() {
         let (a, b) = con.split_once("-").unwrap();
-        network.entry(a).or_default().push(b);
-        network.entry(b).or_default().push(a);
+        network.entry(a).or_default().insert(b);
+        network.entry(b).or_default().insert(a);
     }
 
     let nodes = network.keys();
@@ -42,30 +42,27 @@ fn part1(input: &str) -> u32 {
 }
 
 fn bron_kerbosch<'a>(
-    R: &HashSet<&'a str>,
-    P: &mut HashSet<&'a str>,
-    X: &mut HashSet<&'a str>,
+    r: HashSet<&'a str>,
+    p: &mut HashSet<&'a str>,
+    x: &mut HashSet<&'a str>,
     graph: &'a HashMap<&str, HashSet<&str>>,
     cliques: &mut Vec<HashSet<&'a str>>,
 ) {
-    if P.is_empty() && X.is_empty() {
-        // Found a maximal clique
-        cliques.push(R.clone());
+    if p.is_empty() && x.is_empty() {
+        cliques.push(r);
         return;
     }
 
-    for v in P.clone() {
-        // Recursively explore with v added to R
-        let mut R_new = R.clone();
-        R_new.insert(v);
+    for v in p.clone() {
+        let mut r_new = r.clone();
+        r_new.insert(v);
 
-        let mut P_new: HashSet<&str> = P.intersection(&graph[&v]).copied().collect();
-        let mut X_new: HashSet<&str> = X.intersection(&graph[&v]).copied().collect();
-        bron_kerbosch(&R_new, &mut P_new, &mut X_new, graph, cliques);
+        let mut p_new = p.intersection(&graph[&v]).copied().collect();
+        let mut x_new = x.intersection(&graph[&v]).copied().collect();
+        bron_kerbosch(r_new, &mut p_new, &mut x_new, graph, cliques);
 
-        // Move v from P to X
-        P.remove(v);
-        X.insert(v);
+        p.remove(v);
+        x.insert(v);
     }
 }
 
@@ -81,7 +78,7 @@ fn part2(input: &str) -> String {
     let mut cliques = Vec::new();
 
     bron_kerbosch(
-        &HashSet::new(),
+        HashSet::new(),
         &mut network.keys().copied().collect(),
         &mut HashSet::new(),
         &network,
